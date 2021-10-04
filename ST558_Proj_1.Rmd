@@ -1,0 +1,56 @@
+---
+title: "ST558 Project 1"
+author: "Aries Zhou"
+date: "10/3/2021"
+---
+
+```{r, echo = FALSE, eval = FALSE}
+rmarkdown::render("./ST558_Proj_1.Rmd", 
+                  output_format = "github_document", 
+                  output_dir = "../ywzhou33.github.io/_posts/",
+                  output_options = list(html_preview = FALSE, keep_html=FALSE))
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, eval = TRUE, message = FALSE, warning = FALSE, fig.path = "../ywzhou33.github.io/images/")
+```
+
+[The link to Github Pages repo: ](https://github.com/ywzhou33/ST558-Project-1.git)  
+[The link to Github Blog repo: ](https://github.com/ywzhou33/ywzhou33.github.io.git)  
+
+```{r Packages, echo=TRUE}
+library(devtools)
+library(bigrquery) 
+library(DBI)
+library(httr)
+library(jsonlite)
+```
+
+##Connects to the API.  
+
+Parameters:
+
+ - `q` `(required)` - City name, state code and country code divided by comma.  
+ - `appid` `(required)` - Your unique API key  
+ - `mode` `(optional)` - Response format. Possible values are `xml` and `html`. If you don't use the mode parameter format is JSON by default.  
+ - `units` `(optional)` - Units of measurement. `standard`, `metric` and `imperial` units are available. If you do not use the `units` parameter, `standard` units will be applied by default.  
+ - `lang` `(optinal)` - You can use this parameter to get the output in your language.  
+
+```{r API, echo=TRUE}
+#https://api.openweathermap.org/data/2.5/onecall?lat=33.44&lon=-94.04&exclude=hourly,daily&appid={API key}
+
+key <- "1f302e9647903cb7b350a5580d5c00dc" 
+"6U4chzdkpf2hc4b5jNwsmkN07rhH4OWC" # API key
+get.URL <- function(q, appid, mode, units, lang){
+ 
+}
+URL <- "https://api.openweathermap.org/data/2.5/onecall?lat=35.78&lon=-78.68&appid=1f302e9647903cb7b350a5580d5c00dc"
+
+NCSU <- httr::GET(URL)
+str(httr::content(NCSU), max.level = 1)
+NCSU_txt <- httr::content(NCSU, "text")
+
+```
+
+
+
