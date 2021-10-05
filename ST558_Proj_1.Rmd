@@ -19,36 +19,94 @@ knitr::opts_chunk$set(echo = FALSE, eval = TRUE, message = FALSE, warning = FALS
 [The link to Github Blog repo: ](https://github.com/ywzhou33/ywzhou33.github.io.git)  
 
 ```{r Packages, echo=TRUE}
-library(devtools)
-library(bigrquery) 
-library(DBI)
 library(httr)
 library(jsonlite)
+library(tidyr)
+library(dplyr)
 ```
 
-##Connects to the API.  
+##Connects to the One Call API.  
 
 Parameters:
 
- - `q` `(required)` - City name, state code and country code divided by comma.  
+ - `lat` `(required)` - Latitude; geographical coordinates that have values between -180 and 180.  
+ - `lon` `(required)` - Longitude; geographical coordinates that have values between -180 and 180.  
  - `appid` `(required)` - Your unique API key  
- - `mode` `(optional)` - Response format. Possible values are `xml` and `html`. If you don't use the mode parameter format is JSON by default.  
- - `units` `(optional)` - Units of measurement. `standard`, `metric` and `imperial` units are available. If you do not use the `units` parameter, `standard` units will be applied by default.  
+ - `exclude` `(optional)` - You can use it to exclude some parts from the data, available values are `current`, `minutely`, `hourly`, `daily`, `alerts`, should be a comma-delimited list (without spaces).  
+ - `units` `(optional)` - Units of measurement. `standard` (Kelvin & meter/sec), `metric` (Celsius & meter/sec) and `imperial` (Fahrenheit & miles/hour) units are available. If you do not use the `units` parameter, `standard` units will be applied by default.  
  - `lang` `(optinal)` - You can use this parameter to get the output in your language.  
 
 ```{r API, echo=TRUE}
-#https://api.openweathermap.org/data/2.5/onecall?lat=33.44&lon=-94.04&exclude=hourly,daily&appid={API key}
-
-key <- "1f302e9647903cb7b350a5580d5c00dc" 
+#To get access to current weather, minute forecast for 1 hour, hourly forecast for 48 hours, daily forecast for 7 days and government weather alerts
+seq(from = -180, to = 180, by = 50.66)
+lat <- 35.78
+lon <- c(-78, 180)
+exclude <- "current,minutely,hourly"
+units <- "metric"
+appid <- "1f302e9647903cb7b350a5580d5c00dc" 
 "6U4chzdkpf2hc4b5jNwsmkN07rhH4OWC" # API key
-get.URL <- function(q, appid, mode, units, lang){
- 
-}
-URL <- "https://api.openweathermap.org/data/2.5/onecall?lat=35.78&lon=-78.68&appid=1f302e9647903cb7b350a5580d5c00dc"
 
-NCSU <- httr::GET(URL)
-str(httr::content(NCSU), max.level = 1)
-NCSU_txt <- httr::content(NCSU, "text")
+get.URL <- function(lat, lon, appid, exclude, units, lang){
+        if (is.null(lat)){
+        URL <- paste("https://api.openweathermap.org/data/2.5/onecall?", lat)    
+        }
+        if (is.null(lon)){
+        URL <- paste("https://api.openweathermap.org/data/2.5/onecall?", lat, lon, sep = "&")    
+        }
+        if (is.null(appid)){
+        URL <- paste("https://api.openweathermap.org/data/2.5/onecall?", lat, lon, appid, sep = "&")
+        }
+        else{
+        URL <- paste("https://api.openweathermap.org/data/2.5/onecall?", lat, lon, tolower(exclude), appid, sep = "&")
+        }
+        URL
+}
+Test <- get.URL(lon,appid,exclude,units)        
+
+URL <- c("https://api.openweathermap.org/data/2.5/onecall?lat=35.78&lon=-78.68&exclude=current,minutely,hourly&units=metric&appid=1f302e9647903cb7b350a5580d5c00dc", "https://api.openweathermap.org/data/2.5/onecall?lat=35.78&lon=180&exclude=current,minutely,hourly&units=metric&appid=1f302e9647903cb7b350a5580d5c00dc")
+
+
+for (i in 1:length(URL)) {
+Data.raw <- httr::GET(URL[i])
+str(Data.raw, max.level = 1)
+Data.F7 <- Data.raw$content %>% rawToChar() %>% fromJSON()
+#return(Data.F7[["daily"]])
+}
+
+#get.data <- function(URL){}
+```
+
+Get data
+```{r, eval=TRUE}
+URL.1 <- "https://api.openweathermap.org/data/2.5/onecall?lat=35.78&lon=-78.68&exclude=current,minutely,hourly&units=metric&appid=1f302e9647903cb7b350a5580d5c00dc"
+Data.raw.1 <- httr::GET(URL.1)
+str(Data.raw.1, max.level = 1)
+Data.1 <- Data.raw.1$content %>% rawToChar() %>% fromJSON()
+
+URL.2 <- "https://api.openweathermap.org/data/2.5/onecall?lat=35.78&lon=-180&exclude=current,minutely,hourly&units=metric&appid=1f302e9647903cb7b350a5580d5c00dc"
+Data.raw.2 <- httr::GET(URL.2)
+str(Data.raw.2, max.level = 1)
+Data.2 <- Data.raw.2$content %>% rawToChar() %>% fromJSON()
+
+Data.1.a <- Data.1[["daily"]] %>% select(dt, pressure:dew_point, starts_with("wind"), rain)
+
+Data.1.b <- data.frame(Data.1[["daily"]]$temp[2], Data.1[["daily"]]$temp[3], Data.1[["daily"]]$feels_like[1])
+
+Data.1.new <- cbind(Data.1.a, Data.1.b)
+
+Data.2.a <- Data.2[["daily"]] %>% select(dt, pressure:dew_point, starts_with("wind"), rain)
+
+Data.2.b <- data.frame(Data.2[["daily"]]$temp[2], Data.2[["daily"]]$temp[3], Data.2[["daily"]]$feels_like[1])
+
+Data.2.new <- cbind(Data.2.a, Data.2.b)
+
+Full.data <- rbind(Data.1.new, Data.2.new)
+
+```
+
+
+Summaries
+```{r}
 
 ```
 
