@@ -40,69 +40,84 @@ Parameters:
 
 ```{r API, echo=TRUE}
 #To get access to current weather, minute forecast for 1 hour, hourly forecast for 48 hours, daily forecast for 7 days and government weather alerts
-seq(from = -180, to = 180, by = 50.66)
+
 lat <- 35.78
-lon <- c(-78, 180)
+lon <- seq(from = -180, to = 180, by = 50.66)
 exclude <- "current,minutely,hourly"
 units <- "metric"
 appid <- "1f302e9647903cb7b350a5580d5c00dc" 
 "6U4chzdkpf2hc4b5jNwsmkN07rhH4OWC" # API key
 
-get.URL <- function(lat, lon, appid, exclude, units, lang){
+#function to get a vector containing a list of URL to request datas from API.
+get.URL <- function(lat, lon, appid, exclude=NULL, units = NULL, lang = NULL, ...){
+        base_url<- "https://api.openweathermap.org/data/2.5/onecall?"
         if (is.null(lat)){
-        URL <- paste("https://api.openweathermap.org/data/2.5/onecall?", lat)    
+        URL <- paste(base_url, "lat=", lat, sep = "")    
         }
         if (is.null(lon)){
-        URL <- paste("https://api.openweathermap.org/data/2.5/onecall?", lat, lon, sep = "&")    
+        URL <- paste(base_url, "lat=", lat, "&lon=", lon, sep = "")    
         }
         if (is.null(appid)){
-        URL <- paste("https://api.openweathermap.org/data/2.5/onecall?", lat, lon, appid, sep = "&")
+        URL <- paste(base_url, "lat=", lat, "&lon=", lon, "&appid=", appid, sep = "")
+        }
+        if (is.null(exclude)){
+        URL <- paste(base_url, "lat=", lat, "&lon=", lon, "&exclude=", tolower(exclude), "&appid=", appid, sep = "")
+        }
+        if (is.null(units)){
+        URL <- paste(base_url, "lat=", lat, "&lon=", lon, "&exclude=", tolower(exclude), "&units=", units, "&appid=", appid, sep = "")
+        }
+        if (is.null(lang)){
+        URL <- paste(base_url, "lat=", lat, "&lon=", lon, "&exclude=", tolower(exclude), "&units=", units, "&appid=", appid, sep = "")
         }
         else{
-        URL <- paste("https://api.openweathermap.org/data/2.5/onecall?", lat, lon, tolower(exclude), appid, sep = "&")
+        return("Error: Invalid input")
         }
         URL
 }
-Test <- get.URL(lon,appid,exclude,units)        
 
-URL <- c("https://api.openweathermap.org/data/2.5/onecall?lat=35.78&lon=-78.68&exclude=current,minutely,hourly&units=metric&appid=1f302e9647903cb7b350a5580d5c00dc", "https://api.openweathermap.org/data/2.5/onecall?lat=35.78&lon=180&exclude=current,minutely,hourly&units=metric&appid=1f302e9647903cb7b350a5580d5c00dc")
+URL <- get.URL(lat=lat, lon=lon, appid=appid, exclude=exclude, units=units)        
 
+Data.raw <- list()
+Data.F7 <- list()
 
+#Use for loop to get a list of data parsed from API
 for (i in 1:length(URL)) {
-Data.raw <- httr::GET(URL[i])
-str(Data.raw, max.level = 1)
-Data.F7 <- Data.raw$content %>% rawToChar() %>% fromJSON()
-#return(Data.F7[["daily"]])
+j <- i
+Data.raw[[j]] <- httr::GET(URL[i])
+Data.F7[[j]] <- Data.raw[[j]]$content %>% rawToChar() %>% fromJSON()
 }
-
-#get.data <- function(URL){}
 ```
+
 
 Get data
 ```{r Data, echo=TRUE}
-URL.1 <- "https://api.openweathermap.org/data/2.5/onecall?lat=35.78&lon=-78.68&exclude=current,minutely,hourly&units=metric&appid=1f302e9647903cb7b350a5580d5c00dc"
-Data.raw.1 <- httr::GET(URL.1)
-str(Data.raw.1, max.level = 1)
-Data.1 <- Data.raw.1$content %>% rawToChar() %>% fromJSON()
+select.data <- function(Data.F7, k){
+        Data.a <- Data.F7[[k]][["daily"]] %>% 
+            select(dt, pressure:dew_point, starts_with("wind"), rain)
+        Data.b <- data.frame(Data.F7[[k]][["daily"]]$temp[2], 
+                      Data.F7[[k]][["daily"]]$temp[3], 
+                      Data.F7[[k]][["daily"]]$feels_like[1], 
+                      Data.F7[[k]][2])
+        Data.ab <- cbind(Data.a, Data.b)
+        return(Data.ab)
+}
 
-URL.2 <- "https://api.openweathermap.org/data/2.5/onecall?lat=35.78&lon=-180&exclude=current,minutely,hourly&units=metric&appid=1f302e9647903cb7b350a5580d5c00dc"
-Data.raw.2 <- httr::GET(URL.2)
-str(Data.raw.2, max.level = 1)
-Data.2 <- Data.raw.2$content %>% rawToChar() %>% fromJSON()
+get.full.data <- function(Data){
 
-Data.1.a <- Data.1[["daily"]] %>% select(dt, pressure:dew_point, starts_with("wind"), rain)
+Data.a <- data.frame()
+Data.b <- data.frame()
+Full.data <- data.frame()
 
-Data.1.b <- data.frame(Data.1[["daily"]]$temp[2], Data.1[["daily"]]$temp[3], Data.1[["daily"]]$feels_like[1], Data.1[2])
+for (k in 1:length(Data)){
+ New.data <- select.data(Data, k)
+ Full.data <- rbind(New.data, Full.data)
+}
+return(Full.data)
+}
 
-Data.1.new <- cbind(Data.1.a, Data.1.b)
+Full.data  <- get.full.data(Data = Data.F7)
 
-Data.2.a <- Data.2[["daily"]] %>% select(dt, pressure:dew_point, starts_with("wind"), rain)
 
-Data.2.b <- data.frame(Data.2[["daily"]]$temp[2], Data.2[["daily"]]$temp[3], Data.2[["daily"]]$feels_like[1], Data.2[2]) 
-
-Data.2.new <- cbind(Data.2.a, Data.2.b)
-
-Full.data <- rbind(Data.1.new, Data.2.new)
 ```
 
 ```{r NewVar, echo=TRUE}
