@@ -7,7 +7,7 @@ date: "10/3/2021"
 ```{r, echo = FALSE, eval = FALSE}
 rmarkdown::render("./ST558_Proj_1.Rmd", 
                   output_format = "github_document", 
-                  output_dir = "../ywzhou33.github.io/_posts/",
+                  output_dir = "./",
                   output_options = list(html_preview = FALSE, keep_html=FALSE))
 ```
 
@@ -15,8 +15,7 @@ rmarkdown::render("./ST558_Proj_1.Rmd",
 knitr::opts_chunk$set(echo = FALSE, eval = TRUE, message = FALSE, warning = FALSE, fig.align='center', fig.path = "../ywzhou33.github.io/images/")
 ```
 
-[The link to Github Pages repo: ](https://github.com/ywzhou33/ST558-Project-1.git)  
-[The link to Github Blog repo: ](https://github.com/ywzhou33/ywzhou33.github.io.git)  
+## Listing the packages used in this prject.  
 
 ```{r Packages, echo=TRUE}
 library(httr)
@@ -27,7 +26,17 @@ library(dplyr)
 library(ggplot2)
 ```
 
-##Connects to the One Call API.  
+## Connects to the One Call API.  
+
+The One Call API provides the following weather data for any geographical coordinates:  
+ - Current weather  
+ - Minute forecast for 1 hour  
+ - Hourly forecast for 48 hours  
+ - Daily forecast for 7 days  
+ - National weather alerts  
+ - Historical weather data for the previous 5 days  
+
+These data can be accessed by defining the following parameters in the URL.
 
 Parameters:
 
@@ -38,17 +47,17 @@ Parameters:
  - `units` `(optional)` - Units of measurement. `standard` (Kelvin & meter/sec), `metric` (Celsius & meter/sec) and `imperial` (Fahrenheit & miles/hour) units are available. If you do not use the `units` parameter, `standard` units will be applied by default.  
  - `lang` `(optinal)` - You can use this parameter to get the output in your language.  
 
-```{r API, echo=TRUE}
-#To get access to current weather, minute forecast for 1 hour, hourly forecast for 48 hours, daily forecast for 7 days and government weather alerts
+This section of code is written to get access to daily forecast for 7 days and government weather alerts around the globe at latitude 35.78 (where the North Carolina State University is located). Multiple URLs are returned with the `get.URL` function. Then the data accessed with the URLS are parsed and saved into a list called `Data.F7`.  
 
+```{r API.URL, echo=TRUE}
+#Define values for the parameters
 lat <- 35.78
-lon <- seq(from = -180, to = 180, by = 50.66)
+lon <- seq(from = -180, to = 180, by = 4.3)
 exclude <- "current,minutely,hourly"
 units <- "metric"
-appid <- "1f302e9647903cb7b350a5580d5c00dc" 
-"6U4chzdkpf2hc4b5jNwsmkN07rhH4OWC" # API key
+appid <- "411f596c9a67840a793286c1f7f3d0c1" # API key
 
-#function to get a vector containing a list of URL to request datas from API.
+#Function to get a vector containing a list of URL to request datasets from API.
 get.URL <- function(lat, lon, appid, exclude=NULL, units = NULL, lang = NULL, ...){
         base_url<- "https://api.openweathermap.org/data/2.5/onecall?"
         if (is.null(lat)){
@@ -75,12 +84,13 @@ get.URL <- function(lat, lon, appid, exclude=NULL, units = NULL, lang = NULL, ..
         URL
 }
 
+#Call the function to get URLs
 URL <- get.URL(lat=lat, lon=lon, appid=appid, exclude=exclude, units=units)        
 
+#Use for loop to get a list of data parsed from API and save them into an object called Data.F7.
 Data.raw <- list()
 Data.F7 <- list()
 
-#Use for loop to get a list of data parsed from API
 for (i in 1:length(URL)) {
 j <- i
 Data.raw[[j]] <- httr::GET(URL[i])
@@ -88,59 +98,75 @@ Data.F7[[j]] <- Data.raw[[j]]$content %>% rawToChar() %>% fromJSON()
 }
 ```
 
+## Data Manipulation  
 
-Get data
-```{r Data, echo=TRUE}
+Create a `select.data` function to choose the parts I want from each listed data from API.  
+
+```{r Small.Data, echo=TRUE}
 select.data <- function(Data.F7, k){
         Data.a <- Data.F7[[k]][["daily"]] %>% 
-            select(dt, pressure:dew_point, starts_with("wind"), rain)
+            select(dt, pressure:dew_point, starts_with("wind"))
         Data.b <- data.frame(Data.F7[[k]][["daily"]]$temp[2], 
                       Data.F7[[k]][["daily"]]$temp[3], 
                       Data.F7[[k]][["daily"]]$feels_like[1], 
                       Data.F7[[k]][2])
         Data.ab <- cbind(Data.a, Data.b)
-        return(Data.ab)
+        return(Data.ab) #return a horizontally combined data form one URl
 }
-
-get.full.data <- function(Data){
-
-Data.a <- data.frame()
-Data.b <- data.frame()
-Full.data <- data.frame()
-
-for (k in 1:length(Data)){
- New.data <- select.data(Data, k)
- Full.data <- rbind(New.data, Full.data)
-}
-return(Full.data)
-}
-
-Full.data  <- get.full.data(Data = Data.F7)
-
-
 ```
 
-```{r NewVar, echo=TRUE}
+Call the `select.data` function inside the `get.full.data` function to combine all samll datasets togeter.  
+
+```{r Full.Data, echo=TRUE}
+get.full.data <- function(Data){
+  Data.a <- data.frame()
+  Data.b <- data.frame()
+  Full.data <- data.frame()
+
+  for (k in 1:length(Data)){
+    New.data <- select.data(Data, k)
+    Full.data <- bind_rows(New.data, Full.data, )
+  }
+  return(Full.data) #return a vertically combined full data form all URls 
+}
+
+#called the get.full.data function to get a dataframe containing all datasets together.
+Full.data  <- get.full.data(Data = Data.F7)
+```
+
+Creating two categorical variables and some statistics.  
+
+```{r New.Var, echo=TRUE}
 weather <- Full.data %>% 
         mutate(area = if_else((lon>=-120.74)&(lon<=-75.59), "Land", 
-                      if_else((lon>=-5.91)&(lon<=120.44), "Land", "Water")),
+                      if_else((lon>=-5.91)&(lon<=120.44), "Land", "Water")), # divide the data into land area and water/ocean area according to the longitude values. 
                wind_status = if_else(wind_speed>=8.9, "Windy", 
-                      if_else(wind_speed>=6.7, "Breezy", "Clam")),
-               temp_day = (min+max)/2) %>% 
+                      if_else(wind_speed>=6.7, "Breezy", "Clam")), # define the wind status.
+               temp_day = (min+max)/2) %>% # calculate the average  daily temperature.
         as_tibble()  
-#group_by(area) %>% summarise(temp_avg = mean(temp_day), rain_avg = mean(rain))
 ```
 
-Graphical Summaries  
+```{r Explore.Data, echo=TRUE}
+#Take a look at the data, only showing the first 10 observations.
+knitr::kable(head(weather, n = 10))
+
+#Create a contingency table for area and wind status.
+knitr::kable(table(weather$area, weather$wind_status))
+```
+
+## Graphical Summaries   
+
+Below is a histogram that shows the distribution of the average forecasting temperature of future 7 days for the land and water/ocean area around the globe at latitude of 35.78. From the graph, I observed that the distributions of average temperature are highly skewed for both land and water area. The water area tend to have higher daily temperature in the future 7 days.    
 
 ```{r histogram, echo=TRUE}
 #Histogram for Temperature
 his_temp <- ggplot(data = weather, aes(x = temp_day))
 his_temp + geom_histogram(aes(fill = as.factor(area))) +
-           geom_density(aes(fill = as.factor(area)))+ 
   labs(x="Average Daily Temperature", title = "Histogram for Temperature") + 
   scale_fill_discrete(name = "Area")
 ```
+
+Below is a boxplot that shows the distribution of the average daily temperature for the land and water/ocean area around the globe at latitude of 35.78. It confirms the trends displayed in the histogram that the distribution of average temperature is highly skewed and bi-model for the land area and the water area tend to have higher average daily temperature in the future 7 days.
 
 ```{r boxplot_temp, echo=TRUE}
 #boxplot for temperature
@@ -151,6 +177,7 @@ labs(x ="Temperature", y ="Area", title = "Boxplot for Temperature") +
 scale_color_discrete(name = "Area") + 
 coord_flip() 
 ```
+From the barchart below, I found that the wind status on the land area is more calm while it is more windy over the water area aross the globe at latitude 35.78 for the future 7 days.  
 
 ```{r bar_chart, echo=TRUE}
 #barchart for Wind Status
@@ -159,6 +186,7 @@ bar_wind + geom_bar(aes(fill = as.factor(area)), position = "dodge") +
   labs(x="Wind Status", title = "Bar Chart for Wind Status") + 
   scale_fill_discrete(name = "Area")
 ```
+This boxplot indicates that the humidity over the water areas is high in general that that on the land areas and the humidity varies more on the land areas.  
 
 ```{r boxplot_hum, echo=TRUE}
 #boxplot for humidity
@@ -172,7 +200,7 @@ coord_flip()
 
 
 ```{r scatter, echo=TRUE}
-correlation <- cor(weather$wind_speed, weather$humidity)
+correlation <- cor(weather$wind_speed, weather$temp_day)
 correlation
 
 #Scatterplot for Wind Status v.s. Humidity.
