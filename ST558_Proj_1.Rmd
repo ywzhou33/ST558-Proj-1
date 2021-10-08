@@ -146,12 +146,20 @@ weather <- Full.data %>%
         as_tibble()  
 ```
 
+#### Numerical exploration  
+
 ```{r Explore.Data, echo=TRUE}
 #Take a look at the data, only showing the first 10 observations.
 knitr::kable(head(weather, n = 10))
 
 #Create a contingency table for area and wind status.
 knitr::kable(table(weather$area, weather$wind.status))
+
+weather.stats <- weather %>% group_by(wind.status, area) %>% 
+                 summarise(avg.temp = mean(temp.day), avg.hum = mean(humidity))
+
+#Take a look at the numeric summaries, only showing the first 10 observations.
+knitr::kable(head(weather.stats, n = 10))
 ```
 
 #### Graphical Summaries   
