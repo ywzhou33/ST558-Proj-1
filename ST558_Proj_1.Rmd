@@ -12,10 +12,10 @@ rmarkdown::render("./ST558_Proj_1.Rmd",
 ```
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, eval = TRUE, message = FALSE, warning = FALSE, fig.align='center', fig.path = "../ywzhou33.github.io/images/")
+knitr::opts_chunk$set(echo = FALSE, eval = TRUE, message = FALSE, warning = FALSE, fig.align='center')
 ```
 
-## Listing the packages used in this prject.  
+#### Listing the packages used in this prject.  
 
 ```{r Packages, echo=TRUE}
 library(httr)
@@ -26,7 +26,7 @@ library(dplyr)
 library(ggplot2)
 ```
 
-## Connects to the One Call API.  
+#### Connects to the One Call API.  
 
 The One Call API provides the following weather data for any geographical coordinates:  
  - Current weather  
@@ -98,7 +98,7 @@ Data.F7[[j]] <- Data.raw[[j]]$content %>% rawToChar() %>% fromJSON()
 }
 ```
 
-## Data Manipulation  
+#### Data Manipulation  
 
 Create a `select.data` function to choose the parts I want from each listed data from API.  
 
@@ -140,9 +140,9 @@ Creating two categorical variables and some statistics.
 weather <- Full.data %>% 
         mutate(area = if_else((lon>=-120.74)&(lon<=-75.59), "Land", 
                       if_else((lon>=-5.91)&(lon<=120.44), "Land", "Water")), # divide the data into land area and water/ocean area according to the longitude values. 
-               wind_status = if_else(wind_speed>=8.9, "Windy", 
+               wind.status = if_else(wind_speed>=8.9, "Windy", 
                       if_else(wind_speed>=6.7, "Breezy", "Clam")), # define the wind status.
-               temp_day = (min+max)/2) %>% # calculate the average  daily temperature.
+               temp.day = (min+max)/2) %>% # calculate the average  daily temperature.
         as_tibble()  
 ```
 
@@ -151,63 +151,64 @@ weather <- Full.data %>%
 knitr::kable(head(weather, n = 10))
 
 #Create a contingency table for area and wind status.
-knitr::kable(table(weather$area, weather$wind_status))
+knitr::kable(table(weather$area, weather$wind.status))
 ```
 
-## Graphical Summaries   
+#### Graphical Summaries   
 
 Below is a histogram that shows the distribution of the average forecasting temperature of future 7 days for the land and water/ocean area around the globe at latitude of 35.78. From the graph, I observed that the distributions of average temperature are highly skewed for both land and water area. The water area tend to have higher daily temperature in the future 7 days.    
 
 ```{r histogram, echo=TRUE}
 #Histogram for Temperature
-his_temp <- ggplot(data = weather, aes(x = temp_day))
-his_temp + geom_histogram(aes(fill = as.factor(area))) +
+his.temp <- ggplot(data = weather, aes(x = temp.day))
+his.temp + geom_histogram(aes(fill = as.factor(area))) +
   labs(x="Average Daily Temperature", title = "Histogram for Temperature") + 
   scale_fill_discrete(name = "Area")
 ```
 
-Below is a boxplot that shows the distribution of the average daily temperature for the land and water/ocean area around the globe at latitude of 35.78. It confirms the trends displayed in the histogram that the distribution of average temperature is highly skewed and bi-model for the land area and the water area tend to have higher average daily temperature in the future 7 days.
+Below is a boxplot that shows the distribution of the average daily temperature for the land and water/ocean area around the globe at latitude of 35.78. It confirms the trends displayed in the histogram that the distributions of average temperature are highly skewed for both areas. The water area tend to have higher average daily temperature in the future 7 days.
 
 ```{r boxplot_temp, echo=TRUE}
-#boxplot for temperature
-box_temp <- ggplot(data = weather, aes(x = temp_day))
-box_temp + geom_boxplot(aes(y = as.factor(area))) + 
-  geom_jitter(aes(x = temp_day, y = as.factor(area), color = as.factor(area))) + 
+#Boxplot for Temperature
+box.temp <- ggplot(data = weather, aes(x = temp.day))
+box.temp + geom_boxplot(aes(y = as.factor(area))) + 
+  geom_jitter(aes(x = temp.day, y = as.factor(area), color = as.factor(area))) + 
 labs(x ="Temperature", y ="Area", title = "Boxplot for Temperature") +
 scale_color_discrete(name = "Area") + 
 coord_flip() 
 ```
-From the barchart below, I found that the wind status on the land area is more calm while it is more windy over the water area aross the globe at latitude 35.78 for the future 7 days.  
+From the barchart below, I found that the wind status on the land area is more calm while it is more windy over the water area across the globe at latitude 35.78 for the future 7 days.  
 
 ```{r bar_chart, echo=TRUE}
 #barchart for Wind Status
-bar_wind <- ggplot(data = weather, aes(x = as.character(wind_status)))
-bar_wind + geom_bar(aes(fill = as.factor(area)), position = "dodge") + 
+bar.wind <- ggplot(data = weather, aes(x = as.character(wind.status)))
+bar.wind + geom_bar(aes(fill = as.factor(area)), position = "dodge") + 
   labs(x="Wind Status", title = "Bar Chart for Wind Status") + 
   scale_fill_discrete(name = "Area")
 ```
-This boxplot indicates that the humidity over the water areas is high in general that that on the land areas and the humidity varies more on the land areas.  
+This boxplot indicates that the humidity over the water areas is higher in general than that on the land areas and the humidity varies more on the land areas.  
 
 ```{r boxplot_hum, echo=TRUE}
 #boxplot for humidity
-box_hum <- ggplot(data = weather, aes(x = humidity))
-box_hum + geom_boxplot(aes(y = as.factor(area))) + 
+box.hum <- ggplot(data = weather, aes(x = humidity))
+box.hum + geom_boxplot(aes(y = as.factor(area))) + 
   geom_jitter(aes(x = humidity, y = as.factor(area), color = as.factor(area))) + 
 labs(x ="Humidity", y ="Area", title = "Boxplot for Humidity") +
 scale_color_discrete(name = "Area") + 
 coord_flip()
 ```
 
+This scatter plot indicates that there is a slight positive correlation relationship between the temperature and humidity. Warm air tend to hold more vapor than cool air.     
 
 ```{r scatter, echo=TRUE}
-correlation <- cor(weather$wind_speed, weather$temp_day)
-correlation
+correlation <- cor(weather$temp.day, weather$humidity)
+knitr::kable(correlation)
 
 #Scatterplot for Wind Status v.s. Humidity.
-scatter <- ggplot(data = weather, aes(x = wind_speed, y = humidity))
-scatter + geom_point(aes(color = as.factor(wind_status), shape = as.factor(area))) + 
+scatter <- ggplot(data = weather, aes(x = temp.day, y = humidity))
+scatter + geom_point(aes(color = as.factor(wind.status), shape = as.factor(area))) + 
 geom_smooth(method = lm) + 
-labs(title = "Wind Speed vs Humidity", x = "Wind Speed", y = "Humidity") + 
+labs(title = "Avery Daily Temperature vs Humidity", x = "Avery Daily Temperature", y = "Humidity") + 
 scale_color_discrete(name = "Wind Status") +
 scale_shape_discrete(name = "Area")
 ```
